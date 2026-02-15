@@ -23,6 +23,7 @@ export default function Home() {
   const [student1Class, setStudent1Class] = useState("");
   const [student2Name, setStudent2Name] = useState("");
   const [student2Class, setStudent2Class] = useState("");
+  const [reservationDate, setReservationDate] = useState<Date | null>(null);
 
   const utils = trpc.useUtils();
   const { data: rooms = [] } = trpc.studyRoom.list.useQuery();
@@ -59,17 +60,18 @@ export default function Home() {
     setStudent1Class("");
     setStudent2Name("");
     setStudent2Class("");
+    setReservationDate(null);
   };
 
   const handleCreateReservation = () => {
-    if (!selectedRoom || selectedTime === null || !student1Name || !student1Class || !student2Name || !student2Class) {
+    if (!reservationDate || !selectedRoom || selectedTime === null || !student1Name || !student1Class || !student2Name || !student2Class) {
       toast.error("모든 필드를 입력해주세요.");
       return;
     }
 
     createReservation.mutate({
       roomId: selectedRoom,
-      date: format(selectedDate, "yyyy-MM-dd"),
+      date: format(reservationDate, "yyyy-MM-dd"),
       startTime: selectedTime,
       student1Name,
       student1Class,
@@ -203,8 +205,25 @@ export default function Home() {
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label>날짜</Label>
-                    <Input type="date" value={format(selectedDate, "yyyy-MM-dd")} readOnly />
+                    <Label>날짜 (월~토)</Label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {weekDays.map((day, idx) => {
+                        const isDisabled = day.getDay() === 0;
+                        const isSelected = reservationDate && format(reservationDate, "yyyy-MM-dd") === format(day, "yyyy-MM-dd");
+                        return (
+                          <Button
+                            key={idx}
+                            variant={isSelected ? "default" : "outline"}
+                            disabled={isDisabled}
+                            onClick={() => setReservationDate(day)}
+                            className="flex flex-col items-center p-2 h-auto"
+                          >
+                            <div className="text-xs text-muted-foreground">{format(day, "EEE", { locale: ko })}</div>
+                            <div className="font-semibold">{format(day, "d")}</div>
+                          </Button>
+                        );
+                      })}
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label>스터디룸</Label>
