@@ -36,3 +36,4 @@
 
 ## 버그 수정
 - [x] 예약 생성 기능 오류 디버깅 및 수정
+- [x] require is not defined 오류 수정

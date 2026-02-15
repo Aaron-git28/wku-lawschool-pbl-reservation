@@ -2,6 +2,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { z } from "zod";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -32,7 +33,6 @@ export const appRouter = router({
   reservation: router({
     getByDate: publicProcedure
       .input((raw: unknown) => {
-        const { z } = require("zod");
         return z.object({ date: z.string() }).parse(raw);
       })
       .query(async ({ input }) => {
@@ -57,7 +57,6 @@ export const appRouter = router({
 
     create: protectedProcedure
       .input((raw: unknown) => {
-        const { z } = require("zod");
         return z.object({
           roomId: z.number(),
           date: z.string(),
@@ -141,7 +140,6 @@ export const appRouter = router({
 
     delete: protectedProcedure
       .input((raw: unknown) => {
-        const { z } = require("zod");
         return z.object({ id: z.number() }).parse(raw);
       })
       .mutation(async ({ input, ctx }: { input: any; ctx: any }) => {
