@@ -1,7 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -17,12 +17,145 @@ export const appRouter = router({
     }),
   }),
 
-  // TODO: add feature routers here, e.g.
-  // todo: router({
-  //   list: protectedProcedure.query(({ ctx }) =>
-  //     db.getUserTodos(ctx.user.id)
-  //   ),
-  // }),
+  studyRoom: router({
+    list: publicProcedure.query(async () => {
+      const { getAllStudyRooms, initializeStudyRooms } = await import("./db");
+      const rooms = await getAllStudyRooms();
+      if (rooms.length === 0) {
+        await initializeStudyRooms();
+        return await getAllStudyRooms();
+      }
+      return rooms;
+    }),
+  }),
+
+  reservation: router({
+    getByDate: publicProcedure
+      .input((raw: unknown) => {
+        const { z } = require("zod");
+        return z.object({ date: z.string() }).parse(raw);
+      })
+      .query(async ({ input }) => {
+        const { getReservationsByDate, getStudentById } = await import("./db");
+        const date = new Date(input.date);
+        const reservations = await getReservationsByDate(date);
+        
+        const enriched = await Promise.all(
+          reservations.map(async (r) => {
+            const student1 = await getStudentById(r.student1Id);
+            const student2 = await getStudentById(r.student2Id);
+            return {
+              ...r,
+              student1,
+              student2,
+            };
+          })
+        );
+        
+        return enriched;
+      }),
+
+    create: protectedProcedure
+      .input((raw: unknown) => {
+        const { z } = require("zod");
+        return z.object({
+          roomId: z.number(),
+          date: z.string(),
+          startTime: z.number().min(8).max(23),
+          student1Name: z.string().min(1),
+          student1Class: z.string().min(1),
+          student2Name: z.string().min(1),
+          student2Class: z.string().min(1),
+        }).parse(raw);
+      })
+      .mutation(async ({ input, ctx }: { input: any; ctx: any }) => {
+        const {
+          findOrCreateStudent,
+          createReservation,
+          getStudentReservationHoursForDate,
+          getReservationsByDate,
+        } = await import("./db");
+        const { TRPCError } = await import("@trpc/server");
+
+        const reservationDate = new Date(input.date);
+        const dayOfWeek = reservationDate.getDay();
+        
+        if (dayOfWeek === 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "일요일은 예약할 수 없습니다.",
+          });
+        }
+
+        if (input.startTime < 8 || input.startTime > 23) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "예약 가능 시간은 08:00~24:00입니다.",
+          });
+        }
+
+        const student1 = await findOrCreateStudent(input.student1Name, input.student1Class);
+        const student2 = await findOrCreateStudent(input.student2Name, input.student2Class);
+
+        const existingReservations = await getReservationsByDate(reservationDate);
+        const conflict = existingReservations.find(
+          (r) => r.roomId === input.roomId && r.startTime === input.startTime
+        );
+
+        if (conflict) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "해당 시간대는 이미 예약되어 있습니다.",
+          });
+        }
+
+        const student1Hours = await getStudentReservationHoursForDate(student1.id, reservationDate);
+        const student2Hours = await getStudentReservationHoursForDate(student2.id, reservationDate);
+
+        if (student1Hours >= 2) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `${student1.name}님은 오늘 이미 2시간을 예약하셨습니다.`,
+          });
+        }
+
+        if (student2Hours >= 2) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `${student2.name}님은 오늘 이미 2시간을 예약하셨습니다.`,
+          });
+        }
+
+        const reservationId = await createReservation({
+          roomId: input.roomId,
+          reservationDate,
+          startTime: input.startTime,
+          endTime: input.startTime + 1,
+          student1Id: student1.id,
+          student2Id: student2.id,
+          createdBy: ctx.user.id,
+        });
+
+        return { id: reservationId, success: true };
+      }),
+
+    delete: protectedProcedure
+      .input((raw: unknown) => {
+        const { z } = require("zod");
+        return z.object({ id: z.number() }).parse(raw);
+      })
+      .mutation(async ({ input, ctx }: { input: any; ctx: any }) => {
+        const { deleteReservation } = await import("./db");
+        await deleteReservation(input.id, ctx.user.id);
+        return { success: true };
+      }),
+
+    cleanup: publicProcedure.mutation(async () => {
+      const { deleteOldReservations } = await import("./db");
+      await deleteOldReservations();
+      return { success: true };
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

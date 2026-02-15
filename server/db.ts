@@ -89,4 +89,204 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// 스터디룸 관련 쿼리
+export async function getAllStudyRooms() {
+  const db = await getDb();
+  if (!db) return [];
+  const { studyRooms } = await import("../drizzle/schema");
+  return await db.select().from(studyRooms).orderBy(studyRooms.roomNumber);
+}
+
+export async function initializeStudyRooms() {
+  const db = await getDb();
+  if (!db) return;
+  const { studyRooms } = await import("../drizzle/schema");
+  
+  const rooms = [
+    { roomNumber: "407", floor: 4 },
+    { roomNumber: "408", floor: 4 },
+    { roomNumber: "409", floor: 4 },
+    { roomNumber: "523", floor: 5 },
+    { roomNumber: "524", floor: 5 },
+    { roomNumber: "525", floor: 5 },
+  ];
+
+  for (const room of rooms) {
+    await db.insert(studyRooms).values(room).onDuplicateKeyUpdate({ set: { floor: room.floor } });
+  }
+}
+
+// 학생 관련 쿼리
+export async function findOrCreateStudent(name: string, classNumber: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const { students } = await import("../drizzle/schema");
+  const { eq, and } = await import("drizzle-orm");
+
+  const existing = await db
+    .select()
+    .from(students)
+    .where(and(eq(students.name, name), eq(students.classNumber, classNumber)))
+    .limit(1);
+
+  if (existing.length > 0) {
+    return existing[0]!;
+  }
+
+  const result = await db.insert(students).values({ name, classNumber });
+  const insertId = (result as any).insertId as number;
+  return await db.select().from(students).where(eq(students.id, insertId)).limit(1).then(r => r[0]!);
+}
+
+// 예약 관련 쿼리
+export async function getReservationsByDateRange(startDate: Date, endDate: Date) {
+  const db = await getDb();
+  if (!db) return [];
+  const { reservations, studyRooms, students } = await import("../drizzle/schema");
+  const { gte, lte, eq, and } = await import("drizzle-orm");
+
+  return await db
+    .select({
+      id: reservations.id,
+      roomId: reservations.roomId,
+      roomNumber: studyRooms.roomNumber,
+      reservationDate: reservations.reservationDate,
+      startTime: reservations.startTime,
+      endTime: reservations.endTime,
+      student1: {
+        id: students.id,
+        name: students.name,
+        classNumber: students.classNumber,
+      },
+      student2Id: reservations.student2Id,
+      createdAt: reservations.createdAt,
+    })
+    .from(reservations)
+    .innerJoin(studyRooms, eq(reservations.roomId, studyRooms.id))
+    .innerJoin(students, eq(reservations.student1Id, students.id))
+    .where(and(gte(reservations.reservationDate, startDate), lte(reservations.reservationDate, endDate)));
+}
+
+export async function getReservationsByDate(date: Date) {
+  const db = await getDb();
+  if (!db) return [];
+  const { reservations, studyRooms, students } = await import("../drizzle/schema");
+  const { eq, sql } = await import("drizzle-orm");
+
+  const dateStr = date.toISOString().split('T')[0];
+
+  return await db
+    .select({
+      id: reservations.id,
+      roomId: reservations.roomId,
+      roomNumber: studyRooms.roomNumber,
+      reservationDate: reservations.reservationDate,
+      startTime: reservations.startTime,
+      endTime: reservations.endTime,
+      student1Id: reservations.student1Id,
+      student2Id: reservations.student2Id,
+      createdBy: reservations.createdBy,
+      createdAt: reservations.createdAt,
+    })
+    .from(reservations)
+    .innerJoin(studyRooms, eq(reservations.roomId, studyRooms.id))
+    .where(sql`DATE(${reservations.reservationDate}) = ${dateStr}`);
+}
+
+export async function createReservation(data: {
+  roomId: number;
+  reservationDate: Date;
+  startTime: number;
+  endTime: number;
+  student1Id: number;
+  student2Id: number;
+  createdBy: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const { reservations } = await import("../drizzle/schema");
+
+  const result = await db.insert(reservations).values(data);
+  return (result as any).insertId as number;
+}
+
+export async function deleteReservation(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const { reservations } = await import("../drizzle/schema");
+  const { eq, and } = await import("drizzle-orm");
+
+  await db.delete(reservations).where(and(eq(reservations.id, id), eq(reservations.createdBy, userId)));
+}
+
+export async function getStudentReservationHoursForDate(studentId: number, date: Date) {
+  const db = await getDb();
+  if (!db) return 0;
+  const { reservations } = await import("../drizzle/schema");
+  const { eq, or, sql, and } = await import("drizzle-orm");
+
+  const dateStr = date.toISOString().split('T')[0];
+
+  const result = await db
+    .select({
+      totalHours: sql<number>`SUM(${reservations.endTime} - ${reservations.startTime})`,
+    })
+    .from(reservations)
+    .where(
+      and(
+        sql`DATE(${reservations.reservationDate}) = ${dateStr}`,
+        or(eq(reservations.student1Id, studentId), eq(reservations.student2Id, studentId))
+      )
+    );
+
+  return result[0]?.totalHours || 0;
+}
+
+export async function deleteOldReservations() {
+  const db = await getDb();
+  if (!db) return;
+  const { reservations } = await import("../drizzle/schema");
+  const { lt, sql } = await import("drizzle-orm");
+
+  const oneWeekAgo = new Date();
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+  await db.delete(reservations).where(lt(reservations.reservationDate, oneWeekAgo));
+}
+
+export async function getReservationWithDetails(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const { reservations, studyRooms, students } = await import("../drizzle/schema");
+  const { eq } = await import("drizzle-orm");
+
+  const result = await db
+    .select({
+      id: reservations.id,
+      roomId: reservations.roomId,
+      roomNumber: studyRooms.roomNumber,
+      reservationDate: reservations.reservationDate,
+      startTime: reservations.startTime,
+      endTime: reservations.endTime,
+      student1Id: reservations.student1Id,
+      student2Id: reservations.student2Id,
+      createdBy: reservations.createdBy,
+      createdAt: reservations.createdAt,
+    })
+    .from(reservations)
+    .innerJoin(studyRooms, eq(reservations.roomId, studyRooms.id))
+    .where(eq(reservations.id, id))
+    .limit(1);
+
+  return result[0] || null;
+}
+
+export async function getStudentById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const { students } = await import("../drizzle/schema");
+  const { eq } = await import("drizzle-orm");
+
+  const result = await db.select().from(students).where(eq(students.id, id)).limit(1);
+  return result[0] || null;
+}
