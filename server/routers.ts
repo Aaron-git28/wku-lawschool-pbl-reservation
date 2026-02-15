@@ -79,6 +79,17 @@ export const appRouter = router({
         const reservationDate = new Date(input.date);
         const dayOfWeek = reservationDate.getDay();
         
+        // 과거 날짜는 예약 불가
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (reservationDate < today) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "과거 날짜는 예약할 수 없습니다.",
+          });
+        }
+        
+        // 예약 가능한 요일 확인 (월~토)
         if (dayOfWeek === 0) {
           throw new TRPCError({
             code: "BAD_REQUEST",

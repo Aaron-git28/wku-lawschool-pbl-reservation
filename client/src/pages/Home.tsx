@@ -213,10 +213,10 @@ export default function Home() {
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label>날짜 (월~토)</Label>
+                    <Label>날짜</Label>
                     <div className="grid grid-cols-4 gap-2">
                       {weekDays.map((day, idx) => {
-                        const isDisabled = day.getDay() === 0;
+                        const isDisabled = false;
                         const isSelected = reservationDate && format(reservationDate, "yyyy-MM-dd") === format(day, "yyyy-MM-dd");
                         return (
                           <Button
