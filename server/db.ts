@@ -234,11 +234,8 @@ export async function createReservation(data: {
   const { reservations } = await import("../drizzle/schema");
 
   // 로컬 타임존 기준으로 날짜 저장
-  const year = data.reservationDate.getFullYear();
-  const month = String(data.reservationDate.getMonth() + 1).padStart(2, '0');
-  const day = String(data.reservationDate.getDate()).padStart(2, '0');
-  const dateStr = `${year}-${month}-${day}`;
-  const reservationDateForDB = new Date(`${dateStr}T00:00:00`);
+  // data.reservationDate는 이미 로컬 타임존 기준으로 생성되어 있으므로 단순히 저장
+  const reservationDateForDB = data.reservationDate;
 
   const result = await db.insert(reservations).values({
     ...data,
