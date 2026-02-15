@@ -179,7 +179,7 @@ export async function getReservationsByDate(date: Date) {
   const day = String(date.getDate()).padStart(2, '0');
   const dateStr = `${year}-${month}-${day}`;
 
-  return await db
+  const result = await db
     .select({
       id: reservations.id,
       roomId: reservations.roomId,
@@ -195,6 +195,29 @@ export async function getReservationsByDate(date: Date) {
     .from(reservations)
     .innerJoin(studyRooms, eq(reservations.roomId, studyRooms.id))
     .where(sql`DATE(${reservations.reservationDate}) = ${dateStr}`);
+
+  // 각 예약에 대한 학생 정보 조회
+  const enrichedResult = await Promise.all(
+    result.map(async (reservation) => {
+      const student1List = await db
+        .select()
+        .from(students)
+        .where(eq(students.id, reservation.student1Id))
+        .limit(1);
+      const student2List = await db
+        .select()
+        .from(students)
+        .where(eq(students.id, reservation.student2Id))
+        .limit(1);
+      return {
+        ...reservation,
+        student1: student1List[0] || null,
+        student2: student2List[0] || null,
+      };
+    })
+  );
+
+  return enrichedResult;
 }
 
 export async function createReservation(data: {

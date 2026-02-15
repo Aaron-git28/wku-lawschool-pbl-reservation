@@ -1,0 +1,30 @@
+{
+  "query": "SELECT r.id, r.room_id, r.reservation_date, r.start_time, s1.name as student1_name, s1.class_number as student1_class, s2.name as student2_name, s2.class_number as student2_class FROM reservations r LEFT JOIN students s1 ON r.student1_id = s1.id LEFT JOIN students s2 ON r.student2_id = s2.id ORDER BY r.reservation_date DESC, r.start_time ASC LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user Z1zdru8Y8PvAubS.root --database 53DPFAwTaFEfHG5hHzLeMS --execute SELECT r.id, r.room_id, r.reservation_date, r.start_time, s1.name as student1_name, s1.class_number as student1_class, s2.name as student2_name, s2.class_number as student2_class FROM reservations r LEFT JOIN students s1 ON r.student1_id = s1.id LEFT JOIN students s2 ON r.student2_id = s2.id ORDER BY r.reservation_date DESC, r.start_time ASC LIMIT 20;",
+  "rows": [
+    {
+      "id": "2",
+      "room_id": "1",
+      "reservation_date": "2026-02-15 05:00:00",
+      "start_time": "8",
+      "student1_name": "이성운",
+      "student1_class": "17기",
+      "student2_name": "송현호",
+      "student2_class": "17기"
+    },
+    {
+      "id": "3",
+      "room_id": "1",
+      "reservation_date": "2026-02-15 05:00:00",
+      "start_time": "12",
+      "student1_name": "이성운",
+      "student1_class": "17기",
+      "student2_name": "송현호",
+      "student2_class": "17기"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\troom_id\treservation_date\tstart_time\tstudent1_name\tstudent1_class\tstudent2_name\tstudent2_class\n2\t1\t2026-02-15 05:00:00\t8\t이성운\t17기\t송현호\t17기\n3\t1\t2026-02-15 05:00:00\t12\t이성운\t17기\t송현호\t17기\n",
+  "stderr": "",
+  "execution_time_ms": 1530
+}
