@@ -34,6 +34,9 @@ export default function Home() {
   const createReservation = trpc.reservation.create.useMutation({
     onSuccess: () => {
       toast.success("예약이 완료되었습니다!");
+      if (reservationDate) {
+        setSelectedDate(reservationDate);
+      }
       utils.reservation.getByDate.invalidate();
       setIsDialogOpen(false);
       resetForm();
@@ -64,8 +67,13 @@ export default function Home() {
   };
 
   const handleCreateReservation = () => {
-    if (!reservationDate || !selectedRoom || selectedTime === null || !student1Name || !student1Class || !student2Name || !student2Class) {
+    if (!reservationDate || selectedRoom == null || selectedTime == null || !student1Name || !student1Class || !student2Name || !student2Class) {
       toast.error("모든 필드를 입력해주세요.");
+      return;
+    }
+
+    if (!Number.isFinite(selectedRoom) || !Number.isFinite(selectedTime)) {
+      toast.error("유효한 스터디룸과 시간을 선택해주세요.");
       return;
     }
 
@@ -227,7 +235,7 @@ export default function Home() {
                   </div>
                   <div className="space-y-2">
                     <Label>스터디룸</Label>
-                    <Select value={selectedRoom?.toString()} onValueChange={(v) => setSelectedRoom(Number(v))}>
+                    <Select value={selectedRoom !== null ? String(selectedRoom) : ""} onValueChange={(v) => setSelectedRoom(Number(v))}>
                       <SelectTrigger>
                         <SelectValue placeholder="스터디룸 선택" />
                       </SelectTrigger>
@@ -242,7 +250,7 @@ export default function Home() {
                   </div>
                   <div className="space-y-2">
                     <Label>시간</Label>
-                    <Select value={selectedTime?.toString()} onValueChange={(v) => setSelectedTime(Number(v))}>
+                    <Select value={selectedTime !== null ? String(selectedTime) : ""} onValueChange={(v) => setSelectedTime(Number(v))}>
                       <SelectTrigger>
                         <SelectValue placeholder="시간 선택" />
                       </SelectTrigger>
