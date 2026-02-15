@@ -1,4 +1,4 @@
-import { useAuth } from "@/_core/hooks/useAuth";
+// import { useAuth } from "@/_core/hooks/useAuth"; // 로그인 제거
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -14,7 +14,8 @@ import { useState, useMemo } from "react";
 import { toast } from "sonner";
 
 export default function Home() {
-  const { user, loading, isAuthenticated, logout } = useAuth();
+  // 로그인 없이 누구나 접근 가능하도록 수정
+  // const { user, loading, isAuthenticated, logout } = useAuth();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<number | null>(null);
@@ -134,37 +135,7 @@ export default function Home() {
     setSelectedDate(new Date());
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">로딩 중...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
-              <Calendar className="w-6 h-6 text-primary" />
-            </div>
-            <CardTitle className="text-2xl">원광대 로스쿨 PBL 예약시스템</CardTitle>
-            <CardDescription>스터디룸을 예약하려면 로그인이 필요합니다.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button className="w-full" size="lg" onClick={() => (window.location.href = getLoginUrl())}>
-              로그인
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // 로그인 없이 누구나 접근 가능하므로 로딩 및 인증 체크 제거
 
   return (
     <div className="min-h-screen bg-background">
@@ -182,13 +153,8 @@ export default function Home() {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-sm">
-                <User className="w-4 h-4 text-muted-foreground" />
-                <span className="text-foreground font-medium">{user?.name || user?.email}</span>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => logout()}>
-                <LogOut className="w-4 h-4 mr-2" />
-                로그아웃
+              <Button variant="outline" size="sm" onClick={goToToday}>
+                오늘
               </Button>
             </div>
           </div>
@@ -363,16 +329,14 @@ export default function Home() {
                                 <div className="text-foreground/80">
                                   {reservation.student2?.name} ({reservation.student2?.classNumber})
                                 </div>
-                                {user && reservation.createdBy === user.id && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    onClick={() => handleDeleteReservation(reservation.id)}
-                                  >
-                                    <Trash2 className="w-3 h-3 text-destructive" />
-                                  </Button>
-                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() => handleDeleteReservation(reservation.id)}
+                                >
+                                  <Trash2 className="w-3 h-3 text-destructive" />
+                                </Button>
                               </div>
                             );
                           }
