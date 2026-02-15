@@ -10,7 +10,7 @@ import { trpc } from "@/lib/trpc";
 import { format, addDays, startOfWeek } from "date-fns";
 import { ko } from "date-fns/locale";
 import { Calendar, ChevronLeft, ChevronRight, Clock, LogOut, Plus, Trash2, User } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 
 export default function Home() {
@@ -27,9 +27,21 @@ export default function Home() {
 
   const utils = trpc.useUtils();
   const { data: rooms = [] } = trpc.studyRoom.list.useQuery();
-  const { data: reservations = [] } = trpc.reservation.getByDate.useQuery({
-    date: format(selectedDate, "yyyy-MM-dd"),
-  });
+  
+  const timeSlots = Array.from({ length: 16 }, (_, i) => i + 8);
+  const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
+  const weekDays = Array.from({ length: 6 }, (_, i) => addDays(weekStart, i));
+
+  // 주간 전체 예약 데이터 조회
+  const weekReservationQueries = weekDays.map((day) =>
+    trpc.reservation.getByDate.useQuery({
+      date: format(day, "yyyy-MM-dd"),
+    })
+  );
+
+  const reservations = useMemo(() => {
+    return weekReservationQueries.flatMap((query) => query.data || []);
+  }, [weekReservationQueries]);
 
   const createReservation = trpc.reservation.create.useMutation({
     onSuccess: () => {
@@ -37,7 +49,10 @@ export default function Home() {
       if (reservationDate) {
         setSelectedDate(reservationDate);
       }
-      utils.reservation.getByDate.invalidate();
+      // 주간 전체 예약 데이터 새로고침
+      weekDays.forEach((day) => {
+        utils.reservation.getByDate.invalidate({ date: format(day, "yyyy-MM-dd") });
+      });
       setIsDialogOpen(false);
       resetForm();
     },
@@ -49,7 +64,10 @@ export default function Home() {
   const deleteReservation = trpc.reservation.delete.useMutation({
     onSuccess: () => {
       toast.success("예약이 취소되었습니다.");
-      utils.reservation.getByDate.invalidate();
+      // 주간 전체 예약 데이터 새로고침
+      weekDays.forEach((day) => {
+        utils.reservation.getByDate.invalidate({ date: format(day, "yyyy-MM-dd") });
+      });
     },
     onError: (error) => {
       toast.error(error.message);
@@ -66,14 +84,14 @@ export default function Home() {
     setReservationDate(null);
   };
 
-  const handleCreateReservation = () => {
-    if (!reservationDate || selectedRoom == null || selectedTime == null || !student1Name || !student1Class || !student2Name || !student2Class) {
-      toast.error("모든 필드를 입력해주세요.");
+  const handleSubmit = () => {
+    if (!selectedRoom || selectedTime === null || !reservationDate) {
+      toast.error("유효한 스터디룸과 시간을 선택해주세요.");
       return;
     }
 
-    if (!Number.isFinite(selectedRoom) || !Number.isFinite(selectedTime)) {
-      toast.error("유효한 스터디룸과 시간을 선택해주세요.");
+    if (!student1Name || !student1Class || !student2Name || !student2Class) {
+      toast.error("모든 학생 정보를 입력해주세요.");
       return;
     }
 
@@ -99,14 +117,6 @@ export default function Home() {
       deleteReservation.mutate({ id });
     }
   };
-
-  const getReservationForSlot = (roomId: number, time: number) => {
-    return reservations.find((r) => r.roomId === roomId && r.startTime === time);
-  };
-
-  const timeSlots = Array.from({ length: 16 }, (_, i) => i + 8);
-  const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
-  const weekDays = Array.from({ length: 6 }, (_, i) => addDays(weekStart, i));
 
   const goToPreviousWeek = () => {
     setSelectedDate(addDays(selectedDate, -7));
@@ -134,10 +144,10 @@ export default function Home() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Card className="w-full max-w-md mx-4">
+        <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <div className="mx-auto mb-4 w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-              <Calendar className="w-8 h-8 text-primary" />
+            <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
+              <Calendar className="w-6 h-6 text-primary" />
             </div>
             <CardTitle className="text-2xl">원광대 로스쿨 PBL 예약시스템</CardTitle>
             <CardDescription>스터디룸을 예약하려면 로그인이 필요합니다.</CardDescription>
@@ -201,13 +211,13 @@ export default function Home() {
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={goToToday}>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={goToToday} size="sm">
               오늘
             </Button>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button>
+                <Button size="sm">
                   <Plus className="w-4 h-4 mr-2" />
                   예약하기
                 </Button>
@@ -289,13 +299,8 @@ export default function Home() {
                       <Input value={student2Class} onChange={(e) => setStudent2Class(e.target.value)} placeholder="2기" />
                     </div>
                   </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>
-                    취소
-                  </Button>
-                  <Button className="flex-1" onClick={handleCreateReservation} disabled={createReservation.isPending}>
-                    {createReservation.isPending ? "예약 중..." : "예약하기"}
+                  <Button className="w-full mt-6" onClick={handleSubmit} disabled={createReservation.isPending}>
+                    {createReservation.isPending ? "예약 중..." : "예약 완료"}
                   </Button>
                 </div>
               </DialogContent>
@@ -303,10 +308,10 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Weekly Calendar Grid */}
-        <div className="grid grid-cols-7 gap-4">
-          {/* Header Row */}
-          <div className="col-span-1 font-semibold text-center text-sm text-muted-foreground py-3">시간</div>
+        {/* Calendar Grid */}
+        <div className="grid gap-4 mb-6" style={{ gridTemplateColumns: "80px repeat(6, 1fr)" }}>
+          {/* Header Row - Empty cell + Days */}
+          <div></div>
           {weekDays.map((day, idx) => (
             <div
               key={idx}
@@ -381,39 +386,6 @@ export default function Home() {
               ))}
             </>
           ))}
-        </div>
-
-        {/* Info Section */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">예약 안내</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground space-y-2">
-              <p>• 예약 가능 시간: 월~토 08:00~24:00</p>
-              <p>• 1시간 단위로 예약 가능</p>
-              <p>• 2명의 학생 정보 필요</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">예약 제한</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground space-y-2">
-              <p>• 1인당 하루 최대 2시간</p>
-              <p>• 일요일은 예약 불가</p>
-              <p>• 중복 예약 불가</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">스터디룸 목록</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground space-y-2">
-              <p>• 4층: 407호, 408호, 409호</p>
-              <p>• 5층: 523호, 524호, 525호</p>
-            </CardContent>
-          </Card>
         </div>
       </main>
     </div>
