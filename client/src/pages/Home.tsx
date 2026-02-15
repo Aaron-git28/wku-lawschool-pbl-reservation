@@ -77,9 +77,15 @@ export default function Home() {
       return;
     }
 
+    // 로컬 타임존 기준으로 날짜 문자열 생성
+    const year = reservationDate.getFullYear();
+    const month = String(reservationDate.getMonth() + 1).padStart(2, '0');
+    const day = String(reservationDate.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+
     createReservation.mutate({
       roomId: selectedRoom,
-      date: format(reservationDate, "yyyy-MM-dd"),
+      date: dateStr,
       startTime: selectedTime,
       student1Name,
       student1Class,

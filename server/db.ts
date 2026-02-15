@@ -173,7 +173,11 @@ export async function getReservationsByDate(date: Date) {
   const { reservations, studyRooms, students } = await import("../drizzle/schema");
   const { eq, sql } = await import("drizzle-orm");
 
-  const dateStr = date.toISOString().split('T')[0];
+  // 로컬 타임존 기준으로 날짜 문자열 생성
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const dateStr = `${year}-${month}-${day}`;
 
   return await db
     .select({
@@ -206,7 +210,17 @@ export async function createReservation(data: {
   if (!db) throw new Error("Database not available");
   const { reservations } = await import("../drizzle/schema");
 
-  const result = await db.insert(reservations).values(data);
+  // 로컬 타임존 기준으로 날짜 저장
+  const year = data.reservationDate.getFullYear();
+  const month = String(data.reservationDate.getMonth() + 1).padStart(2, '0');
+  const day = String(data.reservationDate.getDate()).padStart(2, '0');
+  const dateStr = `${year}-${month}-${day}`;
+  const reservationDateForDB = new Date(`${dateStr}T00:00:00`);
+
+  const result = await db.insert(reservations).values({
+    ...data,
+    reservationDate: reservationDateForDB,
+  });
   return (result as any).insertId as number;
 }
 

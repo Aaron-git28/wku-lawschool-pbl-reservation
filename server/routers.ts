@@ -76,20 +76,22 @@ export const appRouter = router({
         } = await import("./db");
         const { TRPCError } = await import("@trpc/server");
 
-        const reservationDate = new Date(input.date);
-        const dayOfWeek = reservationDate.getDay();
+        // 날짜 문자열을 UTC 기준으로 파싱
+        const [year, month, day] = input.date.split('-').map(Number);
+        const reservationDate = new Date(Date.UTC(year, month - 1, day));
+        const dayOfWeek = reservationDate.getUTCDay();
         
         // 과거 날짜는 예약 불가
         const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        if (reservationDate < today) {
+        const todayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+        if (reservationDate < todayUTC) {
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: "과거 날짜는 예약할 수 없습니다.",
           });
         }
         
-        // 예약 가능한 요일 확인 (월~토)
+        // 예약 가능한 요일 확인 (월~토, 0=일요일, 1=월요일, ..., 6=토요일)
         if (dayOfWeek === 0) {
           throw new TRPCError({
             code: "BAD_REQUEST",
