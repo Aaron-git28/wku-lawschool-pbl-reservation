@@ -29,8 +29,8 @@ export default function Home() {
   const { data: rooms = [] } = trpc.studyRoom.list.useQuery();
   
   const timeSlots = Array.from({ length: 16 }, (_, i) => i + 8);
-  const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
-  const weekDays = Array.from({ length: 6 }, (_, i) => addDays(weekStart, i));
+  const weekStart = useMemo(() => startOfWeek(selectedDate, { weekStartsOn: 1 }), [selectedDate]);
+  const weekDays = useMemo(() => Array.from({ length: 6 }, (_, i) => addDays(weekStart, i)), [weekStart]);
 
   // 주간 전체 예약 데이터 조회
   const weekReservationQueries = weekDays.map((day) =>
@@ -41,7 +41,7 @@ export default function Home() {
 
   const reservations = useMemo(() => {
     return weekReservationQueries.flatMap((query) => query.data || []);
-  }, [weekReservationQueries]);
+  }, [weekReservationQueries.map((q) => q.data).join(',')]);
 
   const createReservation = trpc.reservation.create.useMutation({
     onSuccess: () => {
@@ -50,7 +50,9 @@ export default function Home() {
         setSelectedDate(reservationDate);
       }
       // 주간 전체 예약 데이터 새로고침
-      weekDays.forEach((day) => {
+      const start = startOfWeek(reservationDate || new Date(), { weekStartsOn: 1 });
+      const days = Array.from({ length: 6 }, (_, i) => addDays(start, i));
+      days.forEach((day) => {
         utils.reservation.getByDate.invalidate({ date: format(day, "yyyy-MM-dd") });
       });
       setIsDialogOpen(false);
@@ -65,7 +67,9 @@ export default function Home() {
     onSuccess: () => {
       toast.success("예약이 취소되었습니다.");
       // 주간 전체 예약 데이터 새로고침
-      weekDays.forEach((day) => {
+      const start = startOfWeek(selectedDate, { weekStartsOn: 1 });
+      const days = Array.from({ length: 6 }, (_, i) => addDays(start, i));
+      days.forEach((day) => {
         utils.reservation.getByDate.invalidate({ date: format(day, "yyyy-MM-dd") });
       });
     },
