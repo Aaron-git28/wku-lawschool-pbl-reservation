@@ -43,7 +43,7 @@ export default function Home() {
 
   const reservations = useMemo(() => {
     return weekReservationQueries.flatMap((query) => query.data || []);
-  }, [weekReservationQueries.map((q) => q.data).join(',')]);
+  }, [weekReservationQueries]);
 
   const createReservation = trpc.reservation.create.useMutation({
     onSuccess: () => {

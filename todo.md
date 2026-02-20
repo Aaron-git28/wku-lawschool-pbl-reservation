@@ -94,3 +94,7 @@
   - 마이그레이션 적용 (pnpm db:push)
   - 백엔드 코드 수정 (createReservation 함수)
   - 모든 테스트 통과 (7/7 tests passed)
+
+## 버그 수정 (추가9)
+- [x] 토요일 예약현황 표시 안 되는 문제 수정
+  - 의존성 배열 개선 (weekReservationQueries.map((q) => q.data).join(',') 대신 weekReservationQueries 직접 지정)
