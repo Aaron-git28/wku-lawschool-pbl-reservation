@@ -55,7 +55,7 @@ export const appRouter = router({
         return enriched;
       }),
 
-    create: protectedProcedure
+    create: publicProcedure
       .input((raw: unknown) => {
         return z.object({
           roomId: z.number(),
@@ -67,7 +67,7 @@ export const appRouter = router({
           student2Class: z.string().min(1),
         }).parse(raw);
       })
-      .mutation(async ({ input, ctx }: { input: any; ctx: any }) => {
+      .mutation(async ({ input }: { input: any }) => {
         const {
           findOrCreateStudent,
           createReservation,
@@ -145,19 +145,19 @@ export const appRouter = router({
           endTime: input.startTime + 1,
           student1Id: student1.id,
           student2Id: student2.id,
-          createdBy: ctx.user.id,
+          createdBy: 0,
         });
 
         return { id: reservationId, success: true };
       }),
 
-    delete: protectedProcedure
+    delete: publicProcedure
       .input((raw: unknown) => {
         return z.object({ id: z.number() }).parse(raw);
       })
-      .mutation(async ({ input, ctx }: { input: any; ctx: any }) => {
+      .mutation(async ({ input }: { input: any }) => {
         const { deleteReservation } = await import("./db");
-        await deleteReservation(input.id, ctx.user.id);
+        await deleteReservation(input.id, 1);
         return { success: true };
       }),
 
