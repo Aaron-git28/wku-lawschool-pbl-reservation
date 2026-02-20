@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -7,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { trpc } from "@/lib/trpc";
 import { format, addDays, startOfWeek } from "date-fns";
 import { ko } from "date-fns/locale";
-import { Calendar, Clock, Plus, Trash2, Lock } from "lucide-react";
+import { Calendar, Clock, Plus, Trash2, Lock, AlertCircle } from "lucide-react";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 
@@ -22,6 +23,8 @@ export default function Home() {
   const [student2Name, setStudent2Name] = useState("");
   const [student2Class, setStudent2Class] = useState("");
   const [selectedDayIdx, setSelectedDayIdx] = useState<number | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
 
   const utils = trpc.useUtils();
   const { data: rooms = [] } = trpc.studyRoom.list.useQuery();
@@ -90,12 +93,21 @@ export default function Home() {
     });
   };
 
-  const handleDeleteReservation = async (reservationId: number) => {
+  const handleDeleteReservation = (reservationId: number) => {
     if (mode !== "admin") {
       toast.error("관리자만 예약을 삭제할 수 있습니다.");
       return;
     }
-    await deleteReservation.mutateAsync({ id: reservationId });
+    setPendingDeleteId(reservationId);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (pendingDeleteId !== null) {
+      await deleteReservation.mutateAsync({ id: pendingDeleteId });
+      setDeleteConfirmOpen(false);
+      setPendingDeleteId(null);
+    }
   };
 
   const handleAdminLogin = () => {
@@ -108,6 +120,29 @@ export default function Home() {
       setAdminPassword("");
     }
   };
+
+  // 삭제 확인 다이얼로그
+  const DeleteConfirmDialog = () => (
+    <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-destructive" />
+            정말 삭제하시겠습니까?
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            이 예약을 삭제하면 복구할 수 없습니다.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <div className="flex gap-3 justify-end">
+          <AlertDialogCancel>아니오</AlertDialogCancel>
+          <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">
+            예
+          </AlertDialogAction>
+        </div>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 
   // 모드 선택 화면
   if (mode === "select") {
@@ -348,6 +383,7 @@ export default function Home() {
             </div>
           ))}
         </div>
+        <DeleteConfirmDialog />
       </main>
     </div>
   );
