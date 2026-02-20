@@ -1,0 +1,98 @@
+{
+  "query": "SELECT r.id, r.room_id, r.reservation_date, r.start_time, r.end_time, s1.name as student1_name, s1.class_number as student1_class, s2.name as student2_name, s2.class_number as student2_class FROM reservations r LEFT JOIN students s1 ON r.student1_id = s1.id LEFT JOIN students s2 ON r.student2_id = s2.id ORDER BY r.reservation_date DESC LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user Z1zdru8Y8PvAubS.root --database 53DPFAwTaFEfHG5hHzLeMS --execute SELECT r.id, r.room_id, r.reservation_date, r.start_time, r.end_time, s1.name as student1_name, s1.class_number as student1_class, s2.name as student2_name, s2.class_number as student2_class FROM reservations r LEFT JOIN students s1 ON r.student1_id = s1.id LEFT JOIN students s2 ON r.student2_id = s2.id ORDER BY r.reservation_date DESC LIMIT 20;",
+  "rows": [
+    {
+      "id": "4",
+      "room_id": "1",
+      "reservation_date": "2026-02-22 05:00:00",
+      "start_time": "8",
+      "end_time": "9",
+      "student1_name": "이성운",
+      "student1_class": "17기",
+      "student2_name": "송현호",
+      "student2_class": "17기"
+    },
+    {
+      "id": "240021",
+      "room_id": "3",
+      "reservation_date": "2026-02-21 05:00:00",
+      "start_time": "13",
+      "end_time": "14",
+      "student1_name": "치킨",
+      "student1_class": "17기",
+      "student2_name": "피자",
+      "student2_class": "17기"
+    },
+    {
+      "id": "240022",
+      "room_id": "4",
+      "reservation_date": "2026-02-21 05:00:00",
+      "start_time": "9",
+      "end_time": "10",
+      "student1_name": "ㅇㄻ",
+      "student1_class": "11",
+      "student2_name": "ㅇㅁㄴㄹ",
+      "student2_class": "11"
+    },
+    {
+      "id": "240020",
+      "room_id": "4",
+      "reservation_date": "2026-02-21 05:00:00",
+      "start_time": "10",
+      "end_time": "11",
+      "student1_name": "치킨",
+      "student1_class": "17기",
+      "student2_name": "피자",
+      "student2_class": "17기"
+    },
+    {
+      "id": "240018",
+      "room_id": "1",
+      "reservation_date": "2026-02-21 05:00:00",
+      "start_time": "9",
+      "end_time": "10",
+      "student1_name": "이성운",
+      "student1_class": "17기",
+      "student2_name": "홍길동",
+      "student2_class": "17기"
+    },
+    {
+      "id": "240019",
+      "room_id": "5",
+      "reservation_date": "2026-02-20 05:00:00",
+      "start_time": "20",
+      "end_time": "21",
+      "student1_name": "이성운",
+      "student1_class": "17기",
+      "student2_name": "홍길동",
+      "student2_class": "17기"
+    },
+    {
+      "id": "2",
+      "room_id": "1",
+      "reservation_date": "2026-02-15 05:00:00",
+      "start_time": "8",
+      "end_time": "9",
+      "student1_name": "이성운",
+      "student1_class": "17기",
+      "student2_name": "송현호",
+      "student2_class": "17기"
+    },
+    {
+      "id": "3",
+      "room_id": "1",
+      "reservation_date": "2026-02-15 05:00:00",
+      "start_time": "12",
+      "end_time": "13",
+      "student1_name": "이성운",
+      "student1_class": "17기",
+      "student2_name": "송현호",
+      "student2_class": "17기"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\troom_id\treservation_date\tstart_time\tend_time\tstudent1_name\tstudent1_class\tstudent2_name\tstudent2_class\n4\t1\t2026-02-22 05:00:00\t8\t9\t이성운\t17기\t송현호\t17기\n240021\t3\t2026-02-21 05:00:00\t13\t14\t치킨\t17기\t피자\t17기\n240022\t4\t2026-02-21 05:00:00\t9\t10\tㅇㄻ\t11\tㅇㅁㄴㄹ\t11\n240020\t4\t2026-02-21 05:00:00\t10\t11\t치킨\t17기\t피자\t17기\n240018\t1\t2026-02-21 05:00:00\t9\t10\t이성운\t17기\t홍길동\t17기\n240019\t5\t2026-02-20 05:00:00\t20\t21\t이성운\t17기\t홍길동\t17기\n2\t1\t2026-02-15 05:00:00\t8\t9\t이성운\t17기\t송현호\t17기\n3\t1\t2026-02-15 05:00:00\t12\t13\t이성운\t17기\t송현호\t17기\n",
+  "stderr": "",
+  "execution_time_ms": 1595
+}

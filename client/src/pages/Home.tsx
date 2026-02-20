@@ -31,7 +31,7 @@ export default function Home() {
   
   const timeSlots = Array.from({ length: 16 }, (_, i) => i + 8);
   const today = new Date();
-  const weekStart = useMemo(() => startOfWeek(today, { weekStartsOn: 1 }), []);
+  const weekStart = useMemo(() => startOfWeek(today, { weekStartsOn: 1 }), [today.toDateString()]);
   const weekDays = useMemo(() => Array.from({ length: 6 }, (_, i) => addDays(weekStart, i)), [weekStart]);
 
   // 주간 전체 예약 데이터 조회
@@ -345,10 +345,19 @@ export default function Home() {
                     <CardContent className="p-2 space-y-1 min-h-[120px]">
                       {reservations
                         .filter(
-                          (r) =>
-                            r.roomId &&
-                            format(new Date(r.reservationDate), "yyyy-MM-dd") === format(day, "yyyy-MM-dd") &&
-                            r.startTime === time
+                          (r) => {
+                            let reservationDateStr = "";
+                            const resDate = r.reservationDate as any;
+                            if (typeof resDate === 'string') {
+                              reservationDateStr = resDate.split(' ')[0];
+                            } else if (resDate instanceof Date) {
+                              reservationDateStr = format(resDate, "yyyy-MM-dd");
+                            } else {
+                              reservationDateStr = format(new Date(resDate), "yyyy-MM-dd");
+                            }
+                            const dayStr = format(day, "yyyy-MM-dd");
+                            return r.roomId && reservationDateStr === dayStr && r.startTime === time;
+                          }
                         )
                         .map((reservation) => (
                           <div
