@@ -237,11 +237,21 @@ export async function createReservation(data: {
   // data.reservationDate는 이미 로컬 타임존 기준으로 생성되어 있으므로 단순히 저장
   const reservationDateForDB = data.reservationDate;
 
-  const result = await db.insert(reservations).values({
-    ...data,
-    reservationDate: reservationDateForDB,
-  });
-  return (result as any).insertId as number;
+  try {
+    const result = await db.insert(reservations).values({
+      roomId: data.roomId,
+      reservationDate: reservationDateForDB,
+      startTime: data.startTime,
+      endTime: data.endTime,
+      student1Id: data.student1Id,
+      student2Id: data.student2Id,
+      createdBy: data.createdBy,
+    });
+    return (result as any).insertId as number;
+  } catch (error) {
+    console.error("[Database] Failed to create reservation:", error);
+    throw error;
+  }
 }
 
 export async function deleteReservation(id: number, userId: number) {
