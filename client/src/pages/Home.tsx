@@ -1,21 +1,19 @@
-// import { useAuth } from "@/_core/hooks/useAuth"; // 로그인 제거
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { format, addDays, startOfWeek } from "date-fns";
 import { ko } from "date-fns/locale";
-import { Calendar, ChevronLeft, ChevronRight, Clock, LogOut, Plus, Trash2, User } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Clock, Plus, Trash2, Lock } from "lucide-react";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 
 export default function Home() {
-  // 로그인 없이 누구나 접근 가능하도록 수정
-  // const { user, loading, isAuthenticated, logout } = useAuth();
+  const [mode, setMode] = useState<"select" | "user" | "admin">("select");
+  const [adminPassword, setAdminPassword] = useState("");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<number | null>(null);
@@ -50,65 +48,47 @@ export default function Home() {
       if (reservationDate) {
         setSelectedDate(reservationDate);
       }
-      // 주간 전체 예약 데이터 새로고침
-      const start = startOfWeek(reservationDate || new Date(), { weekStartsOn: 1 });
-      const days = Array.from({ length: 6 }, (_, i) => addDays(start, i));
-      days.forEach((day) => {
-        utils.reservation.getByDate.invalidate({ date: format(day, "yyyy-MM-dd") });
-      });
+      setStudent1Name("");
+      setStudent1Class("");
+      setStudent2Name("");
+      setStudent2Class("");
+      setSelectedRoom(null);
+      setSelectedTime(null);
+      setReservationDate(null);
       setIsDialogOpen(false);
-      resetForm();
+      utils.reservation.getByDate.invalidate();
     },
     onError: (error) => {
-      toast.error(error.message);
+      toast.error(error.message || "예약 생성에 실패했습니다.");
     },
   });
 
   const deleteReservation = trpc.reservation.delete.useMutation({
     onSuccess: () => {
-      toast.success("예약이 취소되었습니다.");
-      // 주간 전체 예약 데이터 새로고침
-      const start = startOfWeek(selectedDate, { weekStartsOn: 1 });
-      const days = Array.from({ length: 6 }, (_, i) => addDays(start, i));
-      days.forEach((day) => {
-        utils.reservation.getByDate.invalidate({ date: format(day, "yyyy-MM-dd") });
-      });
+      toast.success("예약이 삭제되었습니다!");
+      utils.reservation.getByDate.invalidate();
     },
     onError: (error) => {
-      toast.error(error.message);
+      toast.error(error.message || "예약 삭제에 실패했습니다.");
     },
   });
 
-  const resetForm = () => {
-    setSelectedRoom(null);
-    setSelectedTime(null);
-    setStudent1Name("");
-    setStudent1Class("");
-    setStudent2Name("");
-    setStudent2Class("");
-    setReservationDate(null);
-  };
-
-  const handleSubmit = () => {
-    if (!selectedRoom || selectedTime === null || !reservationDate) {
-      toast.error("유효한 스터디룸과 시간을 선택해주세요.");
+  const handleCreateReservation = async () => {
+    if (!selectedRoom || selectedTime === null || !student1Name || !student1Class || !student2Name || !student2Class || !reservationDate) {
+      toast.error("모든 필드를 입력해주세요.");
       return;
     }
 
-    if (!student1Name || !student1Class || !student2Name || !student2Class) {
-      toast.error("모든 학생 정보를 입력해주세요.");
+    const reservationDateStr = format(reservationDate, "yyyy-MM-dd");
+    const dayOfWeek = reservationDate.getDay();
+    if (dayOfWeek === 0) {
+      toast.error("일요일에는 예약할 수 없습니다.");
       return;
     }
 
-    // 로컬 타임존 기준으로 날짜 문자열 생성
-    const year = reservationDate.getFullYear();
-    const month = String(reservationDate.getMonth() + 1).padStart(2, '0');
-    const day = String(reservationDate.getDate()).padStart(2, '0');
-    const dateStr = `${year}-${month}-${day}`;
-
-    createReservation.mutate({
+    await createReservation.mutateAsync({
       roomId: selectedRoom,
-      date: dateStr,
+      date: reservationDateStr,
       startTime: selectedTime,
       student1Name,
       student1Class,
@@ -117,9 +97,22 @@ export default function Home() {
     });
   };
 
-  const handleDeleteReservation = (id: number) => {
-    if (confirm("정말 이 예약을 취소하시겠습니까?")) {
-      deleteReservation.mutate({ id });
+  const handleDeleteReservation = async (reservationId: number) => {
+    if (mode !== "admin") {
+      toast.error("관리자만 예약을 삭제할 수 있습니다.");
+      return;
+    }
+    await deleteReservation.mutateAsync({ id: reservationId });
+  };
+
+  const handleAdminLogin = () => {
+    if (adminPassword === "2843") {
+      setMode("admin");
+      setAdminPassword("");
+      toast.success("관리자 모드로 로그인했습니다.");
+    } else {
+      toast.error("비밀번호가 잘못되었습니다.");
+      setAdminPassword("");
     }
   };
 
@@ -135,8 +128,65 @@ export default function Home() {
     setSelectedDate(new Date());
   };
 
-  // 로그인 없이 누구나 접근 가능하므로 로딩 및 인증 체크 제거
+  // 모드 선택 화면
+  if (mode === "select") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
+              <Calendar className="w-6 h-6 text-primary" />
+            </div>
+            <CardTitle className="text-2xl">원광대 로스쿨 PBL 예약시스템</CardTitle>
+            <CardDescription>접속 모드를 선택해주세요.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button className="w-full" size="lg" onClick={() => setMode("user")}>
+              이용자 접속
+            </Button>
+            <Button variant="outline" className="w-full" size="lg" onClick={() => setMode("admin")}>
+              <Lock className="w-4 h-4 mr-2" />
+              관리자 접속
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
+  // 관리자 비밀번호 입력 화면
+  if (mode === "admin" && adminPassword !== "2843") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
+              <Lock className="w-6 h-6 text-primary" />
+            </div>
+            <CardTitle className="text-2xl">관리자 인증</CardTitle>
+            <CardDescription>비밀번호를 입력해주세요.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Input
+              type="password"
+              placeholder="비밀번호"
+              value={adminPassword}
+              onChange={(e) => setAdminPassword(e.target.value)}
+              onKeyPress={(e) => e.key === "Enter" && handleAdminLogin()}
+            />
+            <Button className="w-full" onClick={handleAdminLogin}>
+              로그인
+            </Button>
+            <Button variant="outline" className="w-full" onClick={() => setMode("select")}>
+              돌아가기
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // 예약 시스템 메인 화면
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -149,12 +199,17 @@ export default function Home() {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-foreground">원광대 로스쿨 PBL 예약시스템</h1>
-                <p className="text-sm text-muted-foreground">스터디룸 예약 관리</p>
+                <p className="text-sm text-muted-foreground">
+                  {mode === "admin" ? "관리자 모드" : "이용자 모드"}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-4">
               <Button variant="outline" size="sm" onClick={goToToday}>
                 오늘
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setMode("select")}>
+                로그아웃
               </Button>
             </div>
           </div>
@@ -170,50 +225,42 @@ export default function Home() {
               <ChevronLeft className="w-4 h-4" />
             </Button>
             <div className="text-center min-w-[200px]">
-              <h2 className="text-2xl font-bold text-foreground">
-                {format(weekStart, "yyyy년 M월", { locale: ko })}
-              </h2>
+              <h2 className="text-2xl font-bold text-foreground">{format(weekStart, "yyyy년 M월")}</h2>
               <p className="text-sm text-muted-foreground">
-                {format(weekStart, "M월 d일", { locale: ko })} - {format(weekDays[5]!, "M월 d일", { locale: ko })}
+                {format(weekStart, "d일")} - {format(addDays(weekStart, 5), "d일")}
               </p>
             </div>
             <Button variant="outline" size="icon" onClick={goToNextWeek}>
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={goToToday} size="sm">
-              오늘
-            </Button>
+          {mode === "user" && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button size="sm">
+                <Button size="lg">
                   <Plus className="w-4 h-4 mr-2" />
                   예약하기
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-md">
+              <DialogContent>
                 <DialogHeader>
                   <DialogTitle>스터디룸 예약</DialogTitle>
-                  <DialogDescription>2명의 학생 정보를 입력하여 예약하세요.</DialogDescription>
+                  <DialogDescription>2명의 학생 정보를 입력하여 예약해주세요.</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
+                <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>날짜</Label>
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-6 gap-2">
                       {weekDays.map((day, idx) => {
-                        const isDisabled = false;
                         const isSelected = reservationDate && format(reservationDate, "yyyy-MM-dd") === format(day, "yyyy-MM-dd");
                         return (
                           <Button
                             key={idx}
                             variant={isSelected ? "default" : "outline"}
-                            disabled={isDisabled}
                             onClick={() => setReservationDate(day)}
                             className="flex flex-col items-center p-2 h-auto"
                           >
                             <div className="text-xs text-muted-foreground">{format(day, "EEE", { locale: ko })}</div>
-                            <div className="font-semibold">{format(day, "d")}</div>
                           </Button>
                         );
                       })}
@@ -249,110 +296,86 @@ export default function Home() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="border-t pt-4 space-y-4">
-                    <div className="space-y-2">
-                      <Label>학생 1 - 성명</Label>
-                      <Input value={student1Name} onChange={(e) => setStudent1Name(e.target.value)} placeholder="홍길동" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>학생 1 - 기수</Label>
-                      <Input value={student1Class} onChange={(e) => setStudent1Class(e.target.value)} placeholder="1기" />
-                    </div>
+                  <div className="space-y-2">
+                    <Label>학생1 성명</Label>
+                    <Input value={student1Name} onChange={(e) => setStudent1Name(e.target.value)} placeholder="성명" />
                   </div>
-                  <div className="border-t pt-4 space-y-4">
-                    <div className="space-y-2">
-                      <Label>학생 2 - 성명</Label>
-                      <Input value={student2Name} onChange={(e) => setStudent2Name(e.target.value)} placeholder="김철수" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>학생 2 - 기수</Label>
-                      <Input value={student2Class} onChange={(e) => setStudent2Class(e.target.value)} placeholder="2기" />
-                    </div>
+                  <div className="space-y-2">
+                    <Label>학생1 기수</Label>
+                    <Input value={student1Class} onChange={(e) => setStudent1Class(e.target.value)} placeholder="기수" />
                   </div>
-                  <Button className="w-full mt-6" onClick={handleSubmit} disabled={createReservation.isPending}>
-                    {createReservation.isPending ? "예약 중..." : "예약 완료"}
+                  <div className="space-y-2">
+                    <Label>학생2 성명</Label>
+                    <Input value={student2Name} onChange={(e) => setStudent2Name(e.target.value)} placeholder="성명" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>학생2 기수</Label>
+                    <Input value={student2Class} onChange={(e) => setStudent2Class(e.target.value)} placeholder="기수" />
+                  </div>
+                  <Button className="w-full" onClick={handleCreateReservation} disabled={createReservation.isPending}>
+                    {createReservation.isPending ? "예약 중..." : "예약하기"}
                   </Button>
                 </div>
               </DialogContent>
             </Dialog>
-          </div>
+          )}
         </div>
 
         {/* Calendar Grid */}
-        <div className="grid gap-4 mb-6" style={{ gridTemplateColumns: "80px repeat(6, 1fr)" }}>
-          {/* Header Row - Empty cell + Days */}
-          <div></div>
-          {weekDays.map((day, idx) => (
-            <div
-              key={idx}
-              className={`text-center py-3 rounded-lg ${
-                format(day, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd")
-                  ? "bg-primary/10 text-primary font-semibold"
-                  : "text-foreground"
-              }`}
-            >
-              <div className="text-sm font-medium">{format(day, "EEE", { locale: ko })}</div>
-              <div className="text-lg font-bold">{format(day, "d")}</div>
-            </div>
-          ))}
-
-          {/* Time Slots */}
+        <div className="space-y-4">
           {timeSlots.map((time) => (
-            <>
-              <div key={`time-${time}`} className="flex items-center justify-center text-sm font-medium text-muted-foreground">
-                <Clock className="w-3 h-3 mr-1" />
-                {time}:00
+            <div key={time} className="space-y-2">
+              <div className="flex items-center gap-2 px-4">
+                <Clock className="w-4 h-4 text-muted-foreground" />
+                <span className="font-semibold text-foreground min-w-[80px]">{time}:00 - {time + 1}:00</span>
               </div>
-              {weekDays.map((day, dayIdx) => (
-                <div key={`${time}-${dayIdx}`} className="min-h-[120px]">
-                  <Card className="h-full hover:shadow-md transition-shadow">
-                    <CardContent className="p-3 h-full">
-                      <div className="space-y-2">
-                        {rooms.map((room) => {
-                          const reservation = reservations.find(
-                            (r) =>
-                              r.roomId === room.id &&
-                              r.startTime === time &&
-                              format(new Date(r.reservationDate), "yyyy-MM-dd") === format(day, "yyyy-MM-dd")
-                          );
-
-                          if (reservation) {
-                            return (
-                              <div
-                                key={room.id}
-                                className="bg-primary/10 border border-primary/20 rounded-md p-2 text-xs relative group"
-                              >
-                                <div className="font-semibold text-primary mb-1">{room.roomNumber}호</div>
-                                <div className="text-foreground/80">
-                                  {reservation.student1?.name} ({reservation.student1?.classNumber})
-                                </div>
-                                <div className="text-foreground/80">
-                                  {reservation.student2?.name} ({reservation.student2?.classNumber})
-                                </div>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={() => handleDeleteReservation(reservation.id)}
-                                >
-                                  <Trash2 className="w-3 h-3 text-destructive" />
-                                </Button>
-                              </div>
-                            );
-                          }
-
-                          return (
-                            <div key={room.id} className="text-xs text-muted-foreground/50 px-2">
-                              {room.roomNumber}호
+              <div className="grid grid-cols-6 gap-3">
+                {weekDays.map((day, dayIdx) => (
+                  <Card key={dayIdx} className="overflow-hidden">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm text-center">
+                        <div className="text-xs text-muted-foreground">{format(day, "EEE", { locale: ko })}</div>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-2 space-y-1 min-h-[120px]">
+                      {reservations
+                        .filter(
+                          (r) =>
+                            r.roomId &&
+                            format(new Date(r.reservationDate), "yyyy-MM-dd") === format(day, "yyyy-MM-dd") &&
+                            r.startTime === time
+                        )
+                        .map((reservation) => (
+                          <div
+                            key={reservation.id}
+                            className="relative group bg-primary/10 border border-primary/30 rounded p-2 text-xs space-y-1 hover:bg-primary/20 transition-colors"
+                          >
+                            <div className="font-semibold text-foreground">
+                              {rooms.find((r) => r.id === reservation.roomId)?.roomNumber}호
                             </div>
-                          );
-                        })}
-                      </div>
+                            <div className="text-foreground/80">
+                              {reservation.student1?.name} ({reservation.student1?.classNumber})
+                            </div>
+                            <div className="text-foreground/80">
+                              {reservation.student2?.name} ({reservation.student2?.classNumber})
+                            </div>
+                            {mode === "admin" && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => handleDeleteReservation(reservation.id)}
+                              >
+                                <Trash2 className="w-3 h-3 text-destructive" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
                     </CardContent>
                   </Card>
-                </div>
-              ))}
-            </>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       </main>
