@@ -323,6 +323,15 @@ export default function Home() {
 
         {/* Calendar Grid */}
         <div className="space-y-4">
+          {/* Room Headers */}
+          <div className="grid grid-cols-6 gap-3 mb-4">
+            {rooms.map((room) => (
+              <div key={room.id} className="text-center font-semibold text-foreground bg-primary/5 rounded-lg py-2 px-2">
+                {room.roomNumber}호
+              </div>
+            ))}
+          </div>
+
           {timeSlots.map((time) => (
             <div key={time} className="space-y-2">
               <div className="flex items-center gap-2 px-4">
@@ -330,49 +339,50 @@ export default function Home() {
                 <span className="font-semibold text-foreground min-w-[80px]">{time}:00 - {time + 1}:00</span>
               </div>
               <div className="grid grid-cols-6 gap-3">
-                {weekDays.map((day, dayIdx) => (
-                  <Card key={dayIdx} className="overflow-hidden">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm text-center">
-                        <div className="text-xs text-muted-foreground">{format(day, "EEE", { locale: ko })}</div>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-2 space-y-1 min-h-[120px]">
-                      {reservations
-                        .filter(
-                          (r) =>
-                            r.roomId &&
-                            format(new Date(r.reservationDate), "yyyy-MM-dd") === format(day, "yyyy-MM-dd") &&
-                            r.startTime === time
-                        )
-                        .map((reservation) => (
-                          <div
-                            key={reservation.id}
-                            className="relative group bg-primary/10 border border-primary/30 rounded p-2 text-xs space-y-1 hover:bg-primary/20 transition-colors"
-                          >
-                            <div className="font-semibold text-foreground">
-                              {rooms.find((r) => r.id === reservation.roomId)?.roomNumber}호
-                            </div>
-                            <div className="text-foreground/80">
-                              {reservation.student1?.name} ({reservation.student1?.classNumber})
-                            </div>
-                            <div className="text-foreground/80">
-                              {reservation.student2?.name} ({reservation.student2?.classNumber})
-                            </div>
-                            {mode === "admin" && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={() => handleDeleteReservation(reservation.id)}
+                {rooms.map((room) => (
+                  <div key={room.id} className="space-y-2">
+                    {weekDays.map((day, dayIdx) => (
+                      <Card key={dayIdx} className="overflow-hidden">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-sm text-center">
+                            <div className="text-xs text-muted-foreground">{format(day, "EEE", { locale: ko })}</div>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-2 space-y-1 min-h-[120px]">
+                          {reservations
+                            .filter(
+                              (r) =>
+                                r.roomId === room.id &&
+                                format(new Date(r.reservationDate), "yyyy-MM-dd") === format(day, "yyyy-MM-dd") &&
+                                r.startTime === time
+                            )
+                            .map((reservation) => (
+                              <div
+                                key={reservation.id}
+                                className="relative group bg-primary/10 border border-primary/30 rounded p-2 text-xs space-y-1 hover:bg-primary/20 transition-colors"
                               >
-                                <Trash2 className="w-3 h-3 text-destructive" />
-                              </Button>
-                            )}
-                          </div>
-                        ))}
-                    </CardContent>
-                  </Card>
+                                <div className="text-foreground/80">
+                                  {reservation.student1?.name} ({reservation.student1?.classNumber})
+                                </div>
+                                <div className="text-foreground/80">
+                                  {reservation.student2?.name} ({reservation.student2?.classNumber})
+                                </div>
+                                {mode === "admin" && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={() => handleDeleteReservation(reservation.id)}
+                                  >
+                                    <Trash2 className="w-3 h-3 text-destructive" />
+                                  </Button>
+                                )}
+                              </div>
+                            ))}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 ))}
               </div>
             </div>
