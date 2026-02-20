@@ -7,14 +7,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { trpc } from "@/lib/trpc";
 import { format, addDays, startOfWeek } from "date-fns";
 import { ko } from "date-fns/locale";
-import { Calendar, ChevronLeft, ChevronRight, Clock, Plus, Trash2, Lock } from "lucide-react";
+import { Calendar, Clock, Plus, Trash2, Lock } from "lucide-react";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 
 export default function Home() {
   const [mode, setMode] = useState<"select" | "user" | "admin">("select");
   const [adminPassword, setAdminPassword] = useState("");
-  const [selectedDate, setSelectedDate] = useState(new Date());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<number | null>(null);
   const [selectedTime, setSelectedTime] = useState<number | null>(null);
@@ -22,13 +21,14 @@ export default function Home() {
   const [student1Class, setStudent1Class] = useState("");
   const [student2Name, setStudent2Name] = useState("");
   const [student2Class, setStudent2Class] = useState("");
-  const [reservationDate, setReservationDate] = useState<Date | null>(null);
+  const [selectedDayIdx, setSelectedDayIdx] = useState<number | null>(null);
 
   const utils = trpc.useUtils();
   const { data: rooms = [] } = trpc.studyRoom.list.useQuery();
   
   const timeSlots = Array.from({ length: 16 }, (_, i) => i + 8);
-  const weekStart = useMemo(() => startOfWeek(selectedDate, { weekStartsOn: 1 }), [selectedDate]);
+  const today = new Date();
+  const weekStart = useMemo(() => startOfWeek(today, { weekStartsOn: 1 }), []);
   const weekDays = useMemo(() => Array.from({ length: 6 }, (_, i) => addDays(weekStart, i)), [weekStart]);
 
   // 주간 전체 예약 데이터 조회
@@ -45,16 +45,13 @@ export default function Home() {
   const createReservation = trpc.reservation.create.useMutation({
     onSuccess: () => {
       toast.success("예약이 완료되었습니다!");
-      if (reservationDate) {
-        setSelectedDate(reservationDate);
-      }
       setStudent1Name("");
       setStudent1Class("");
       setStudent2Name("");
       setStudent2Class("");
       setSelectedRoom(null);
       setSelectedTime(null);
-      setReservationDate(null);
+      setSelectedDayIdx(null);
       setIsDialogOpen(false);
       utils.reservation.getByDate.invalidate();
     },
@@ -74,17 +71,13 @@ export default function Home() {
   });
 
   const handleCreateReservation = async () => {
-    if (!selectedRoom || selectedTime === null || !student1Name || !student1Class || !student2Name || !student2Class || !reservationDate) {
+    if (!selectedRoom || selectedTime === null || !student1Name || !student1Class || !student2Name || !student2Class || selectedDayIdx === null) {
       toast.error("모든 필드를 입력해주세요.");
       return;
     }
 
+    const reservationDate = weekDays[selectedDayIdx];
     const reservationDateStr = format(reservationDate, "yyyy-MM-dd");
-    const dayOfWeek = reservationDate.getDay();
-    if (dayOfWeek === 0) {
-      toast.error("일요일에는 예약할 수 없습니다.");
-      return;
-    }
 
     await createReservation.mutateAsync({
       roomId: selectedRoom,
@@ -114,18 +107,6 @@ export default function Home() {
       toast.error("비밀번호가 잘못되었습니다.");
       setAdminPassword("");
     }
-  };
-
-  const goToPreviousWeek = () => {
-    setSelectedDate(addDays(selectedDate, -7));
-  };
-
-  const goToNextWeek = () => {
-    setSelectedDate(addDays(selectedDate, 7));
-  };
-
-  const goToToday = () => {
-    setSelectedDate(new Date());
   };
 
   // 모드 선택 화면
@@ -204,37 +185,26 @@ export default function Home() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <Button variant="outline" size="sm" onClick={goToToday}>
-                오늘
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setMode("select")}>
-                로그아웃
-              </Button>
-            </div>
+            <Button variant="outline" size="sm" onClick={() => setMode("select")}>
+              로그아웃
+            </Button>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="container py-8">
-        {/* Date Navigation */}
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon" onClick={goToPreviousWeek}>
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <div className="text-center min-w-[200px]">
-              <h2 className="text-2xl font-bold text-foreground">{format(weekStart, "yyyy년 M월")}</h2>
-              <p className="text-sm text-muted-foreground">
-                {format(weekStart, "d일")} - {format(addDays(weekStart, 5), "d일")}
-              </p>
-            </div>
-            <Button variant="outline" size="icon" onClick={goToNextWeek}>
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
-          {mode === "user" && (
+        {/* Week Header */}
+        <div className="mb-8 text-center">
+          <h2 className="text-3xl font-bold text-foreground mb-2">{format(weekStart, "yyyy년 M월")}</h2>
+          <p className="text-lg text-muted-foreground">
+            {format(weekStart, "d일")} - {format(addDays(weekStart, 5), "d일")}
+          </p>
+        </div>
+
+        {/* Reservation Button */}
+        {mode === "user" && (
+          <div className="mb-8 flex justify-center">
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button size="lg">
@@ -252,12 +222,12 @@ export default function Home() {
                     <Label>날짜</Label>
                     <div className="grid grid-cols-6 gap-2">
                       {weekDays.map((day, idx) => {
-                        const isSelected = reservationDate && format(reservationDate, "yyyy-MM-dd") === format(day, "yyyy-MM-dd");
+                        const isSelected = selectedDayIdx === idx;
                         return (
                           <Button
                             key={idx}
                             variant={isSelected ? "default" : "outline"}
-                            onClick={() => setReservationDate(day)}
+                            onClick={() => setSelectedDayIdx(idx)}
                             className="flex flex-col items-center p-2 h-auto"
                           >
                             <div className="text-xs text-muted-foreground">{format(day, "EEE", { locale: ko })}</div>
@@ -318,8 +288,8 @@ export default function Home() {
                 </div>
               </DialogContent>
             </Dialog>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Calendar Grid */}
         <div className="space-y-4">
