@@ -1,0 +1,1 @@
+ALTER TABLE `reservations` MODIFY COLUMN `created_by` int;

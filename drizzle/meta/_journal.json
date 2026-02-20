@@ -15,6 +15,13 @@
       "when": 1771151579039,
       "tag": "0001_tidy_stick",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1771579706991,
+      "tag": "0002_nosy_scarlet_witch",
+      "breakpoints": true
     }
   ]
 }

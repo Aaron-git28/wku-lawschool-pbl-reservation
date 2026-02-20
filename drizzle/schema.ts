@@ -66,7 +66,7 @@ export const reservations = mysqlTable("reservations", {
   endTime: int("end_time").notNull(), // 종료 시간 (startTime + 1)
   student1Id: int("student1_id").notNull().references(() => students.id, { onDelete: "cascade" }),
   student2Id: int("student2_id").notNull().references(() => students.id, { onDelete: "cascade" }),
-  createdBy: int("created_by").notNull().references(() => users.id, { onDelete: "cascade" }), // 예약 생성자
+  createdBy: int("created_by").references(() => users.id, { onDelete: "cascade" }), // 예약 생성자 (로그인 없이 접근 가능하므로 nullable)
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });

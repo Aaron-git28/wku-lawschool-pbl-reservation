@@ -145,7 +145,6 @@ export const appRouter = router({
           endTime: input.startTime + 1,
           student1Id: student1.id,
           student2Id: student2.id,
-          createdBy: 0,
         });
 
         return { id: reservationId, success: true };

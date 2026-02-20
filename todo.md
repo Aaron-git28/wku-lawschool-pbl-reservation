@@ -87,3 +87,10 @@
 
 ## 버그 수정 (추가7)
 - [x] 데이터베이스 쓰기 오류 해결 - reservations 테이블 insert 실패
+
+## 버그 수정 (추가8)
+- [x] 데이터베이스 insert 오류 완전 수정
+  - created_by 필드 nullable로 변경
+  - 마이그레이션 적용 (pnpm db:push)
+  - 백엔드 코드 수정 (createReservation 함수)
+  - 모든 테스트 통과 (7/7 tests passed)

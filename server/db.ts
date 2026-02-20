@@ -227,7 +227,7 @@ export async function createReservation(data: {
   endTime: number;
   student1Id: number;
   student2Id: number;
-  createdBy: number;
+  createdBy?: number;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -245,7 +245,7 @@ export async function createReservation(data: {
       endTime: data.endTime,
       student1Id: data.student1Id,
       student2Id: data.student2Id,
-      createdBy: data.createdBy,
+      createdBy: data.createdBy ?? null,
     });
     return (result as any).insertId as number;
   } catch (error) {
